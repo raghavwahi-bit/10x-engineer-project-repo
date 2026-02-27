@@ -1,0 +1,455 @@
+# Codebase Rules for Continuation
+
+This file documents the coding standards, patterns, and conventions used in this project to ensure consistency across all contributions.
+
+## Project Overview
+
+- **Name:** 10x Engineer Project
+- **Primary Languages:** Python (Backend), JavaScript/TypeScript (Frontend)
+- **Framework:** FastAPI (Backend), React (Frontend - implied)
+- **Database:** SQLAlchemy ORM
+- **Architecture:** REST API with modular structure
+
+---
+
+## 1. Project Coding Standards
+
+### Python Standards
+
+#### Code Style
+- **Style Guide:** PEP 8
+- **Linter:** pylint, flake8 (recommended)
+- **Formatter:** black (line length: 88)
+- **Type Hints:** Use type hints throughout for better code clarity
+  ```python
+  def get_prompt(prompt_id: str) -> Prompt:
+      pass
+  ```
+
+#### Imports
+- Group imports in the following order: standard library, third-party, local
+- One import per line for clarity (except `from X import A, B` for related imports)
+  ```python
+  from typing import Optional, List
+  from datetime import datetime
+  
+  from fastapi import FastAPI, HTTPException
+  from sqlalchemy.orm import Session
+  
+  from app.models import Prompt
+  from app.schemas import PromptCreate
+  ```
+
+#### Naming Conventions
+- **Classes:** PascalCase (e.g., `PromptBase`, `CollectionCreate`)
+- **Functions/Methods:** snake_case (e.g., `get_prompt`, `create_collection`)
+- **Constants:** UPPER_SNAKE_CASE (e.g., `MAX_TITLE_LENGTH`, `DEFAULT_LIMIT`)
+- **Private Methods:** Prefix with underscore (e.g., `_validate_prompt`)
+
+#### Docstring Style
+- Use triple-quoted docstrings with Google-style formatting
+- Include description, attributes/parameters, and return type
+  ```python
+  def create_prompt(prompt_data: PromptCreate, db: Session) -> Prompt:
+      """Create a new prompt in the database.
+      
+      Args:
+          prompt_data: The prompt creation data.
+          db: The database session.
+      
+      Returns:
+          The created prompt object.
+      
+      Raises:
+          ValueError: If collection_id is invalid.
+      """
+      pass
+  ```
+
+### JavaScript/TypeScript Standards
+
+#### Code Style
+- **Style Guide:** Airbnb JavaScript Style Guide
+- **Linter:** ESLint
+- **Formatter:** Prettier
+- **Type Checking:** TypeScript where applicable
+
+#### Naming Conventions
+- **Components:** PascalCase (e.g., `PromptCard`, `CollectionList`)
+- **Functions/Variables:** camelCase (e.g., `fetchPrompts`, `isLoading`)
+- **Constants:** UPPER_SNAKE_CASE (e.g., `API_BASE_URL`, `MAX_RETRIES`)
+- **Selectors/IDs:** kebab-case (e.g., `prompt-card`, `collection-item`)
+
+---
+
+## 2. Preferred Patterns and Conventions
+
+### Backend Patterns
+
+#### Router Organization
+- Group related endpoints in router modules
+- Use descriptive route prefixes
+  ```python
+  # Example: app/routers/prompts.py
+  router = APIRouter(prefix="/prompts", tags=["prompts"])
+  
+  @router.get("/")
+  def list_prompts(...):
+      pass
+  ```
+
+#### Model Organization
+- **PromptBase:** Contains shared fields for all prompt models
+- **PromptCreate:** Used for POST requests (inherits from PromptBase)
+- **PromptUpdate:** Used for PUT/PATCH requests (inherits from PromptBase)
+- **Prompt:** Full response model with metadata (id, timestamps)
+
+#### Database Session Management
+- Use dependency injection for database sessions
+- Always close/cleanup sessions via context managers
+  ```python
+  from fastapi import Depends
+  from sqlalchemy.orm import Session
+  
+  def get_db():
+      db = SessionLocal()
+      try:
+          yield db
+      finally:
+          db.close()
+  
+  @router.get("/prompts")
+  def list_prompts(db: Session = Depends(get_db)):
+      pass
+  ```
+
+#### Error Handling
+- Use FastAPI HTTPException for API errors
+- Include status code and detail message
+  ```python
+  from fastapi import HTTPException
+  
+  raise HTTPException(
+      status_code=404,
+      detail="Prompt not found"
+  )
+  ```
+
+#### Validation
+- Use Pydantic Field validators with constraints
+- Store validation rules in model definitions
+  ```python
+  title: str = Field(..., min_length=1, max_length=200, description="...")
+  ```
+
+### Frontend Patterns
+
+#### Component Structure
+- One component per file
+- Use functional components with hooks
+- Follow container/presentational component pattern
+
+#### State Management
+- Use React hooks (useState, useContext, useReducer)
+- Keep state as close to usage as possible
+- Lift state up only when necessary
+
+#### API Integration
+- Centralize API calls in service/api directory
+- Use consistent error handling across all requests
+- Implement retry logic for failed requests
+
+---
+
+## 3. File Naming Conventions
+
+### Python Files
+- **Models:** `models.py` - Pydantic models and database schemas
+- **Routers:** `routers/[resource].py` - API endpoints (e.g., `routers/prompts.py`)
+- **Services:** `services/[resource].py` - Business logic (e.g., `services/prompt_service.py`)
+- **Database:** `database.py` - Database configuration and session management
+- **Config:** `config.py` - Application configuration
+- **Utils:** `utils/[name].py` - Utility functions
+- **Tests:** `tests/test_[module].py` - Test files matching module names
+
+### JavaScript/TypeScript Files
+- **Components:** `[ComponentName].jsx` or `[ComponentName].tsx`
+- **Hooks:** `use[HookName].js` or `use[HookName].ts`
+- **Services:** `[serviceName]Service.js` or `[serviceName]Service.ts`
+- **Utils:** `[utilName]Utils.js` or `[utilName]Utils.ts`
+- **Tests:** `[FileName].test.js` or `[FileName].test.tsx`
+- **Styles:** `[ComponentName].module.css` or `[ComponentName].css`
+
+### Documentation Files
+- **API Documentation:** `docs/API_REFERENCE.md`
+- **Setup Guide:** `docs/SETUP.md`
+- **Architecture:** `docs/ARCHITECTURE.md`
+- **Contributing:** `CONTRIBUTING.md`
+
+---
+
+## 4. Error Handling Approach
+
+### Python Backend
+
+#### Exception Hierarchy
+```python
+# Custom exceptions should inherit from Exception
+class PromptException(Exception):
+    """Base exception for prompt-related errors."""
+    pass
+
+class PromptNotFoundError(PromptException):
+    """Raised when a prompt cannot be found."""
+    pass
+
+class InvalidCollectionError(PromptException):
+    """Raised when collection is invalid."""
+    pass
+```
+
+#### Error Response Format
+```json
+{
+  "detail": "Human-readable error message",
+  "status": 400,
+  "error_code": "ERROR_CODE_CONSTANT"
+}
+```
+
+#### Validation Error Handling
+- Return 422 Unprocessable Entity for validation errors
+- Include field-level error details
+- Use Pydantic's built-in validation
+
+#### Logging
+- Use Python's logging module
+- Log errors at appropriate levels (ERROR, WARNING, INFO)
+  ```python
+  import logging
+  logger = logging.getLogger(__name__)
+  logger.error("Failed to create prompt: %s", str(e))
+  ```
+
+### Frontend Error Handling
+
+#### Error Boundaries
+- Implement error boundaries for React components
+- Display user-friendly error messages
+- Never expose raw API errors to users
+
+#### API Error Handling
+```javascript
+try {
+  const data = await fetchPrompts();
+} catch (error) {
+  if (error.status === 404) {
+    showUserMessage("Prompt not found");
+  } else if (error.status === 422) {
+    showValidationErrors(error.details);
+  } else {
+    showUserMessage("An error occurred. Please try again.");
+  }
+}
+```
+
+#### User-Facing Messages
+- Be specific but user-friendly
+- Avoid technical jargon
+- Suggest actions when appropriate
+
+---
+
+## 5. Testing Requirements
+
+### Python Backend Testing
+
+#### Test Framework
+- **Framework:** pytest
+- **Coverage:** Aim for >80% code coverage
+- **Fixtures:** Use pytest fixtures for setup/teardown
+
+#### Test Organization
+```
+tests/
+├── test_models.py
+├── test_routers/
+│   ├── test_prompts.py
+│   └── test_collections.py
+├── test_services/
+│   └── test_prompt_service.py
+├── conftest.py
+└── fixtures/
+    └── sample_data.py
+```
+
+#### Test File Structure
+```python
+# tests/test_routers/test_prompts.py
+import pytest
+from fastapi.testclient import TestClient
+from app.main import app
+
+client = TestClient(app)
+
+@pytest.fixture
+def sample_prompt():
+    """Fixture providing sample prompt data."""
+    return {
+        "title": "Test Prompt",
+        "content": "Test content",
+        "description": "Test description"
+    }
+
+def test_create_prompt(sample_prompt):
+    """Test prompt creation."""
+    response = client.post("/api/prompts", json=sample_prompt)
+    assert response.status_code == 201
+    assert response.json()["title"] == sample_prompt["title"]
+
+def test_get_prompt_not_found():
+    """Test retrieving non-existent prompt."""
+    response = client.get("/api/prompts/nonexistent")
+    assert response.status_code == 404
+```
+
+#### Testing Best Practices
+- Test both success and failure paths
+- Use descriptive test names: `test_[function]_[scenario]`
+- One assertion per test when possible
+- Mock external dependencies
+- Test edge cases and boundary conditions
+
+### Frontend Testing
+
+#### Test Framework
+- **Framework:** Jest + React Testing Library
+- **Coverage:** Aim for >75% code coverage
+
+#### Test Types
+1. **Unit Tests:** Individual components and functions
+2. **Integration Tests:** Feature flows
+3. **Snapshot Tests:** UI consistency (use sparingly)
+
+#### Test File Examples
+```javascript
+// PromptCard.test.jsx
+import { render, screen } from '@testing-library/react';
+import PromptCard from './PromptCard';
+
+describe('PromptCard', () => {
+  it('renders prompt title', () => {
+    const prompt = {
+      id: '1',
+      title: 'Test Prompt',
+      content: 'Test content'
+    };
+    
+    render(<PromptCard prompt={prompt} />);
+    expect(screen.getByText('Test Prompt')).toBeInTheDocument();
+  });
+  
+  it('handles click event', () => {
+    const handleClick = jest.fn();
+    render(<PromptCard prompt={mockPrompt} onClick={handleClick} />);
+    
+    screen.getByText('Test Prompt').click();
+    expect(handleClick).toHaveBeenCalled();
+  });
+});
+```
+
+#### Testing Best Practices
+- Test user interactions, not implementation details
+- Avoid snapshot tests for complex components
+- Mock API calls and external services
+- Test accessibility (keyboard navigation, screen reader compatibility)
+
+### Integration Testing
+
+#### API Integration Tests
+- Test complete request/response cycles
+- Verify database state changes
+- Test error scenarios
+
+#### End-to-End Testing (E2E)
+- Use Playwright or Cypress for E2E tests
+- Test critical user workflows
+- Run against staging environment
+
+---
+
+## 6. Git and Version Control
+
+### Branch Naming
+- Feature: `feature/description-of-feature`
+- Bugfix: `bugfix/description-of-issue`
+- Hotfix: `hotfix/critical-issue`
+- Example: `feature/add-prompt-validation`
+
+### Commit Messages
+- Use present tense: "Add feature" not "Added feature"
+- Be descriptive but concise
+- Start with a type: `feat:`, `fix:`, `docs:`, `test:`, `refactor:`
+  ```
+  feat: Add prompt search functionality
+  fix: Resolve collection deletion error
+  docs: Update API reference
+  ```
+
+### Pull Request Guidelines
+- Link to related issues
+- Provide clear description of changes
+- Request review from team members
+- Ensure all tests pass before merging
+
+---
+
+## 7. Documentation Requirements
+
+### Code Documentation
+- Every public function/class must have a docstring
+- Include type hints and parameter descriptions
+- Document exceptions that may be raised
+
+### API Documentation
+- Update API_REFERENCE.md for new endpoints
+- Include request/response examples
+- Document error responses
+
+### README Files
+- Maintain updated README.md in root and key directories
+- Include setup instructions
+- Document key features and usage
+
+---
+
+## 8. Performance and Optimization
+
+### Backend
+- Use database indexing for frequently queried fields
+- Implement pagination for list endpoints
+- Use connection pooling for database connections
+- Profile code for bottlenecks
+
+### Frontend
+- Implement code splitting and lazy loading
+- Optimize images and assets
+- Minimize re-renders using React.memo and useMemo
+- Use virtualization for large lists
+
+---
+
+## 9. Security Considerations (Planned)
+
+- Input validation for all user inputs
+- SQL injection prevention (use SQLAlchemy ORM)
+- XSS prevention (React auto-escapes by default)
+- CORS configuration (currently allows all)
+- Rate limiting (planned for future)
+- Authentication/Authorization (planned for future)
+
+---
+
+## Last Updated
+February 27, 2026
