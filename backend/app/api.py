@@ -5,15 +5,18 @@ This module defines all API endpoints for the PromptLab platform.
 Endpoints:
     Health: GET /health
     Prompts: GET/POST /prompts, GET/PUT/PATCH/DELETE /prompts/{id}
+    Prompt Run: POST /prompts/{id}/run
     Collections: GET/POST /collections, GET/DELETE /collections/{id}
     Tags: GET/POST /tags, GET/DELETE /tags/{id}
     Prompt-Tags: GET/POST /prompts/{id}/tags, DELETE /prompts/{id}/tags/{tag_id}
 """
 
+import os
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 from app import __version__
 from app.models import (
@@ -491,3 +494,65 @@ def remove_tag_from_prompt(prompt_id: str, tag_id: str):
     if not storage.remove_tag_from_prompt(prompt_id, tag_id):
         raise HTTPException(status_code=404, detail="Tag not associated with prompt")
     return None
+
+
+# ============== AI Run Endpoint ==============
+
+
+class RunPromptRequest(BaseModel):
+    """Request model for running a prompt with AI."""
+
+    variables: Optional[dict] = None
+
+
+class RunPromptResponse(BaseModel):
+    """Response model for AI-generated output."""
+
+    prompt_id: str
+    output: str
+    model: str
+
+
+@app.post("/prompts/{prompt_id}/run", response_model=RunPromptResponse)
+def run_prompt(prompt_id: str, request: RunPromptRequest = RunPromptRequest()):
+    """Execute a prompt using the OpenAI API.
+
+    Args:
+        prompt_id: The unique identifier of the prompt.
+        request: Optional variables to interpolate into the prompt content.
+
+    Returns:
+        RunPromptResponse: The AI-generated output.
+
+    Raises:
+        HTTPException: 404 if prompt not found, 500 if AI call fails,
+                       400 if API key is not configured.
+    """
+    prompt = _get_prompt_or_404(prompt_id)
+
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if not api_key:
+        raise HTTPException(
+            status_code=400,
+            detail="OPENAI_API_KEY environment variable is not set",
+        )
+
+    content = prompt.content
+    if request.variables:
+        for key, value in request.variables.items():
+            content = content.replace(f"{{{{{key}}}}}", str(value))
+
+    try:
+        from openai import OpenAI
+
+        client = OpenAI(api_key=api_key)
+        model = os.environ.get("OPENAI_MODEL", "gpt-3.5-turbo")
+        response = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": content}],
+            max_tokens=1000,
+        )
+        output = response.choices[0].message.content
+        return RunPromptResponse(prompt_id=prompt_id, output=output, model=model)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AI execution failed: {str(e)}")

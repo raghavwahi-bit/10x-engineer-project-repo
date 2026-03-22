@@ -8,3 +8,4 @@ flake8>=7.0.0
 black>=24.2.0
 pre-commit>=3.6.0
 mutmut>=2.4.4
+openai>=1.0.0
