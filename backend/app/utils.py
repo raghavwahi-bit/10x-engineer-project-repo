@@ -6,17 +6,17 @@ including ID generation, timestamp management, and other helper functions.
 Functions:
     generate_id: Generate a unique identifier using UUID.
     get_current_time: Get the current UTC timestamp.
-    
+
 Examples:
     Generate a unique ID for a new resource:
-    
+
     >>> from app.utils import generate_id
     >>> new_id = generate_id()
     >>> print(new_id)
     'prompt_abc123def456'
-    
+
     Get the current time:
-    
+
     >>> from app.utils import get_current_time
     >>> now = get_current_time()
     >>> print(now)
@@ -31,16 +31,18 @@ from typing import List
 from app.models import Prompt
 
 
-def sort_prompts_by_date(prompts: List[Prompt], descending: bool = True) -> List[Prompt]:
+def sort_prompts_by_date(
+    prompts: List[Prompt], descending: bool = True
+) -> List[Prompt]:
     """Sort prompts by their creation date.
-    
+
     Args:
         prompts: A list of prompt objects to sort.
         descending: If True, sorts prompts in descending order; otherwise, ascending.
-        
+
     Returns:
         A list of sorted prompts.
-    
+
     Example:
         >>> prompts = [Prompt(created_at='2022-01-01'), Prompt(created_at='2023-01-01')]
         >>> sorted_prompts = sort_prompts_by_date(prompts)
@@ -50,16 +52,18 @@ def sort_prompts_by_date(prompts: List[Prompt], descending: bool = True) -> List
     return sorted(prompts, key=lambda p: p.created_at, reverse=descending)
 
 
-def filter_prompts_by_collection(prompts: List[Prompt], collection_id: str) -> List[Prompt]:
+def filter_prompts_by_collection(
+    prompts: List[Prompt], collection_id: str
+) -> List[Prompt]:
     """Filter prompts by a specific collection ID.
-    
+
     Args:
         prompts: A list of prompt objects to filter.
         collection_id: The collection ID to filter prompts by.
-        
+
     Returns:
         A list of prompts belonging to the specified collection.
-    
+
     Example:
         >>> prompts = [Prompt(collection_id='abc'), Prompt(collection_id='xyz')]
         >>> filtered_prompts = filter_prompts_by_collection(prompts, 'abc')
@@ -71,37 +75,39 @@ def filter_prompts_by_collection(prompts: List[Prompt], collection_id: str) -> L
 
 def search_prompts(prompts: List[Prompt], query: str) -> List[Prompt]:
     """Search for prompts containing a specific query in their title or description.
-    
+
     Args:
         prompts: A list of prompt objects to search through.
         query: The search query string.
-        
+
     Returns:
         A list of prompts where the query is found in the title or description.
-    
+
     Example:
-        >>> prompts = [Prompt(title='Hello World'), Prompt(description='The quick brown fox')]
+        >>> prompts = [Prompt(title='Hello World'),
+        ...            Prompt(description='The quick brown fox')]
         >>> result = search_prompts(prompts, 'quick')
         >>> print([p.title for p in result])
         [''] # Title is empty but found in description
     """
     query_lower = query.lower()
     return [
-        p for p in prompts 
-        if query_lower in p.title.lower() or 
-           (p.description and query_lower in p.description.lower())
+        p
+        for p in prompts
+        if query_lower in p.title.lower()
+        or (p.description and query_lower in p.description.lower())
     ]
 
 
 def validate_prompt_content(content: str) -> bool:
     """Validate the content of a prompt.
-    
+
     Args:
         content: The content string of the prompt to validate.
-        
+
     Returns:
         True if the content is valid, False otherwise.
-    
+
     Example:
         >>> print(validate_prompt_content('Valid content here'))
         True
@@ -115,20 +121,21 @@ def validate_prompt_content(content: str) -> bool:
 
 def extract_variables(content: str) -> List[str]:
     """Extract template variables from a prompt content.
-    
+
     Variables are in the format {{variable_name}}.
-    
+
     Args:
         content: The content string to extract variables from.
-        
+
     Returns:
         A list of variable names.
-    
+
     Example:
         >>> content = 'Hello, {{name}}!'
         >>> print(extract_variables(content))
         ['name']
     """
     import re
-    pattern = r'\{\{(\w+)\}\}'
+
+    pattern = r"\{\{(\w+)\}\}"
     return re.findall(pattern, content)

@@ -554,6 +554,321 @@ curl -X DELETE http://localhost:8000/api/collections/collection_456def
 
 ---
 
+### Tags
+
+#### GET `/tags`
+
+Retrieve all tags.
+
+**Request:**
+```bash
+curl -X GET http://localhost:8000/tags
+```
+
+**Response (200 OK):**
+```json
+{
+  "tags": [
+    {
+      "id": "tag_abc123",
+      "name": "creative-writing",
+      "description": "Prompts for creative writing tasks",
+      "usage_count": 0,
+      "created_at": "2026-03-22T10:00:00Z"
+    }
+  ],
+  "total": 1
+}
+```
+
+---
+
+#### POST `/tags`
+
+Create a new tag.
+
+**Request Body:**
+```json
+{
+  "name": "creative-writing",
+  "description": "Prompts for creative writing tasks"
+}
+```
+
+**Request:**
+```bash
+curl -X POST http://localhost:8000/tags \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "creative-writing",
+    "description": "Prompts for creative writing tasks"
+  }'
+```
+
+**Response (201 Created):**
+```json
+{
+  "id": "tag_abc123",
+  "name": "creative-writing",
+  "description": "Prompts for creative writing tasks",
+  "usage_count": 0,
+  "created_at": "2026-03-22T10:00:00Z"
+}
+```
+
+**Error Response (409 - Duplicate):**
+```json
+{
+  "detail": "Tag already exists"
+}
+```
+
+**Error Response (422 - Validation Error):**
+```json
+{
+  "detail": [
+    {
+      "loc": ["body", "name"],
+      "msg": "String should match pattern '^[a-zA-Z0-9_-]+$'",
+      "type": "string_pattern_mismatch"
+    }
+  ]
+}
+```
+
+**Tag Name Constraints:**
+- 3-50 characters
+- Alphanumeric, hyphens, and underscores only (`^[a-zA-Z0-9_-]+$`)
+- Case-insensitive uniqueness (e.g., "Python" and "python" are considered duplicates)
+
+---
+
+#### GET `/tags/{tag_id}`
+
+Retrieve a specific tag by ID.
+
+**Path Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| tag_id | string | The unique identifier of the tag |
+
+**Request:**
+```bash
+curl -X GET http://localhost:8000/tags/tag_abc123
+```
+
+**Response (200 OK):**
+```json
+{
+  "id": "tag_abc123",
+  "name": "creative-writing",
+  "description": "Prompts for creative writing tasks",
+  "usage_count": 0,
+  "created_at": "2026-03-22T10:00:00Z"
+}
+```
+
+**Error Response (404):**
+```json
+{
+  "detail": "Tag not found"
+}
+```
+
+---
+
+#### DELETE `/tags/{tag_id}`
+
+Delete a tag. Automatically removes all prompt associations.
+
+**Path Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| tag_id | string | The unique identifier of the tag |
+
+**Request:**
+```bash
+curl -X DELETE http://localhost:8000/tags/tag_abc123
+```
+
+**Response (204 No Content):**
+```
+(empty response body)
+```
+
+**Error Response (404):**
+```json
+{
+  "detail": "Tag not found"
+}
+```
+
+---
+
+### Prompt Tags
+
+#### GET `/prompts/{prompt_id}/tags`
+
+Get all tags associated with a prompt.
+
+**Path Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| prompt_id | string | The unique identifier of the prompt |
+
+**Request:**
+```bash
+curl -X GET http://localhost:8000/prompts/prompt_123abc/tags
+```
+
+**Response (200 OK):**
+```json
+{
+  "prompt_id": "prompt_123abc",
+  "tags": [
+    {
+      "id": "tag_abc123",
+      "name": "creative-writing",
+      "description": "Prompts for creative writing tasks",
+      "usage_count": 0,
+      "created_at": "2026-03-22T10:00:00Z"
+    }
+  ],
+  "total_tags": 1
+}
+```
+
+**Error Response (404):**
+```json
+{
+  "detail": "Prompt not found"
+}
+```
+
+---
+
+#### POST `/prompts/{prompt_id}/tags`
+
+Add tags to a prompt by tag names. Tags must already exist.
+
+**Path Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| prompt_id | string | The unique identifier of the prompt |
+
+**Request Body:**
+```json
+{
+  "tag_names": ["creative-writing", "beginner"]
+}
+```
+
+**Request:**
+```bash
+curl -X POST http://localhost:8000/prompts/prompt_123abc/tags \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tag_names": ["creative-writing", "beginner"]
+  }'
+```
+
+**Response (200 OK):**
+```json
+{
+  "prompt_id": "prompt_123abc",
+  "tags": [
+    {
+      "id": "tag_abc123",
+      "name": "creative-writing",
+      "description": null,
+      "usage_count": 0,
+      "created_at": "2026-03-22T10:00:00Z"
+    },
+    {
+      "id": "tag_def456",
+      "name": "beginner",
+      "description": null,
+      "usage_count": 0,
+      "created_at": "2026-03-22T10:00:00Z"
+    }
+  ],
+  "total_tags": 2
+}
+```
+
+**Error Response (404 - Prompt not found):**
+```json
+{
+  "detail": "Prompt not found"
+}
+```
+
+**Error Response (404 - Tag not found):**
+```json
+{
+  "detail": "Tag 'nonexistent' not found"
+}
+```
+
+---
+
+#### DELETE `/prompts/{prompt_id}/tags/{tag_id}`
+
+Remove a tag from a prompt.
+
+**Path Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| prompt_id | string | The unique identifier of the prompt |
+| tag_id | string | The unique identifier of the tag to remove |
+
+**Request:**
+```bash
+curl -X DELETE http://localhost:8000/prompts/prompt_123abc/tags/tag_abc123
+```
+
+**Response (204 No Content):**
+```
+(empty response body)
+```
+
+**Error Response (404):**
+```json
+{
+  "detail": "Tag not associated with prompt"
+}
+```
+
+---
+
+### Filtering Prompts by Tags
+
+The `GET /prompts` endpoint supports filtering by tags using the `tags` query parameter.
+
+**Query Parameter:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| tags | string | Comma-separated tag names. Uses AND logic (prompts must have ALL specified tags). |
+
+**Examples:**
+
+Filter by single tag:
+```bash
+curl -X GET "http://localhost:8000/prompts?tags=creative-writing"
+```
+
+Filter by multiple tags (AND logic):
+```bash
+curl -X GET "http://localhost:8000/prompts?tags=creative-writing,beginner"
+```
+
+Combine with search:
+```bash
+curl -X GET "http://localhost:8000/prompts?tags=python&search=tutorial"
+```
+
+---
+
 ## Rate Limiting
 
 Currently, **no rate limiting is enforced**. All endpoints accept unlimited requests.
@@ -577,6 +892,8 @@ Currently, **no rate limiting is enforced**. All endpoints accept unlimited requ
 | description (Prompt) | - | 500 |
 | name (Collection) | 1 | 100 |
 | description (Collection) | - | 500 |
+| name (Tag) | 3 | 50 |
+| description (Tag) | - | 500 |
 
 ## Support
 
